@@ -70,7 +70,7 @@ func main() {
 		Help: "specify the setting",
 
 		Flags: func(f *grumble.Flags) {
-			f.String("r", "remote", "192.168.66.33:10010", "ip address and port")
+			f.String("r", "remote", "192.168.66.35:10010", "ip address and port")
 		},
 
 		Run: func(c *grumble.Context) error {

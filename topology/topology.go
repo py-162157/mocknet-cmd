@@ -115,7 +115,7 @@ func (n *MyEmunet) addedge(node1 string, node2 string, weight ...int) error {
 			weight: uint(w),
 		}
 
-		n.edges[node2+"-"+node1] = Edge{
+		/*n.edges[node2+"-"+node1] = Edge{
 			start: element(Node{
 				name:   node2,
 				weight: n.nodes[node2].weight,
@@ -127,7 +127,7 @@ func (n *MyEmunet) addedge(node1 string, node2 string, weight ...int) error {
 			intf1:  n.intf_index[node2],
 			intf2:  n.intf_index[node1],
 			weight: uint(w),
-		}
+		}*/
 
 		n.intf_index[node1]++
 		n.intf_index[node2]++
@@ -273,96 +273,49 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 	mynet := new_emunet("fat-tree")
 	switch_count := 1
 	var i int
-	for i = 1; i <= n; i++ {
-		if i <= n/2 {
-			node := Node{
-				name:   "s" + strconv.Itoa(switch_count),
-				weight: uint(n),
-			}
-			fat_tree.cores = append(fat_tree.cores, node)
-			mynet.addnode("s"+strconv.Itoa(switch_count), n)
-			switch_count++
-
-			var pod Pod
-			for range makerange(1, n/2+1) {
-				node := Node{
-					name:   "s" + strconv.Itoa(switch_count),
-					weight: uint(n),
-				}
-				pod.aggregations = append(pod.aggregations, node)
-				mynet.addnode("s"+strconv.Itoa(switch_count), n)
-				switch_count++
-
-				var ground Ground
-				node = Node{
-					name:   "s" + strconv.Itoa(switch_count),
-					weight: uint(n),
-				}
-				ground.access = node
-				mynet.addnode("s"+strconv.Itoa(switch_count), n)
-				switch_count++
-
-				host_count := 1
-				for range makerange(1, n/2+1) {
-					node = Node{
-						name:   "h" + strconv.Itoa(host_count) + ground.access.name,
-						weight: 1,
-					}
-					ground.hosts = append(ground.hosts, node)
-					mynet.addnode("h"+strconv.Itoa(host_count)+ground.access.name, 1)
-					host_count++
-
-				}
-				pod.grounds = append(pod.grounds, ground)
-			}
-			fat_tree.pods = append(fat_tree.pods, pod)
+	for i = 1; i <= n*n/4; i++ {
+		node := Node{
+			name:   "s" + strconv.Itoa(switch_count),
+			weight: uint(n),
 		}
+		fat_tree.cores = append(fat_tree.cores, node)
+		mynet.addnode("s"+strconv.Itoa(switch_count), n)
+		switch_count++
 	}
-
 	for i = 1; i <= n; i++ {
-		if i > n/2 {
+		var pod Pod
+		for range makerange(1, n/2+1) {
 			node := Node{
 				name:   "s" + strconv.Itoa(switch_count),
 				weight: uint(n),
 			}
-			fat_tree.cores = append(fat_tree.cores, node)
+			pod.aggregations = append(pod.aggregations, node)
 			mynet.addnode("s"+strconv.Itoa(switch_count), n)
 			switch_count++
 
-			var pod Pod
-			for range makerange(1, n/2+1) {
-				node := Node{
-					name:   "s" + strconv.Itoa(switch_count),
-					weight: uint(n),
-				}
-				pod.aggregations = append(pod.aggregations, node)
-				mynet.addnode("s"+strconv.Itoa(switch_count), n)
-				switch_count++
-
-				var ground Ground
-				node = Node{
-					name:   "s" + strconv.Itoa(switch_count),
-					weight: uint(n),
-				}
-				ground.access = node
-				mynet.addnode("s"+strconv.Itoa(switch_count), n)
-				switch_count++
-
-				host_count := 1
-				for range makerange(1, n/2+1) {
-					node = Node{
-						name:   "h" + strconv.Itoa(host_count) + ground.access.name,
-						weight: 1,
-					}
-					ground.hosts = append(ground.hosts, node)
-					mynet.addnode("h"+strconv.Itoa(host_count)+ground.access.name, 1)
-					host_count++
-
-				}
-				pod.grounds = append(pod.grounds, ground)
+			var ground Ground
+			node = Node{
+				name:   "s" + strconv.Itoa(switch_count),
+				weight: uint(n),
 			}
-			fat_tree.pods = append(fat_tree.pods, pod)
+			ground.access = node
+			mynet.addnode("s"+strconv.Itoa(switch_count), n)
+			switch_count++
+
+			host_count := 1
+			for range makerange(1, n/2+1) {
+				node = Node{
+					name:   "h" + strconv.Itoa(host_count) + ground.access.name,
+					weight: 1,
+				}
+				ground.hosts = append(ground.hosts, node)
+				mynet.addnode("h"+strconv.Itoa(host_count)+ground.access.name, 1)
+				host_count++
+
+			}
+			pod.grounds = append(pod.grounds, ground)
 		}
+		fat_tree.pods = append(fat_tree.pods, pod)
 	}
 
 	for i, core := range fat_tree.cores {
@@ -374,7 +327,6 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 				weight = uint(r)
 			}
 			mynet.addedge(core.name, pod.aggregations[aggregation_count].name, int(weight))
-			mynet.addedge(pod.aggregations[aggregation_count].name, core.name, int(weight))
 		}
 	}
 
@@ -387,7 +339,6 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 					weight = uint(r)
 				}
 				mynet.addedge(aggregation.name, ground.access.name, int(weight))
-				mynet.addedge(ground.access.name, aggregation.name, int(weight))
 			}
 		}
 	}
@@ -401,7 +352,6 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 					weight = uint(r)
 				}
 				mynet.addedge(ground.access.name, host.name, int(weight))
-				mynet.addedge(host.name, ground.access.name, int(weight))
 			}
 		}
 	}
@@ -423,14 +373,11 @@ func Generate_Minimal_Topo() rpctest.Emunet {
 func GenerateTestTopo() rpctest.Emunet {
 	mynet := new_emunet("test")
 	mynet.addnode("s1")
-	mynet.addnode("s2")
 	mynet.addnode("h1s1")
 	mynet.addnode("h2s1")
 
-	mynet.addedge("s1", "h1s1")
+	mynet.addedge("h1s1", "s1")
 	mynet.addedge("s1", "h2s1")
-	mynet.addedge("s2", "h1s1")
-	mynet.addedge("s2", "h2s1")
 
 	return mynet.transform()
 }
