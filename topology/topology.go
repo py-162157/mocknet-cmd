@@ -208,10 +208,16 @@ func args_judgement(type_string string, args []string) error {
 		type_arg_number = 2
 	} else if type_string == "fat-tree" {
 		type_arg_number = 1
+	} else if type_string == "spine-leaf" {
+		type_arg_number = 4
 	}
 
 	if len(args) != type_arg_number {
 		return errors.New("the parameter of" + type_string + "topology must be" + strconv.Itoa(type_arg_number))
+	}
+
+	if type_string == "spine-leaf" {
+
 	}
 
 	for _, arg := range args {
@@ -222,6 +228,11 @@ func args_judgement(type_string string, args []string) error {
 				k, _ := strconv.Atoi(arg)
 				if k%2 != 0 || k <= 2 {
 					return errors.New("the k of fat-tree topology must be even and greater than 2")
+				}
+			} else if type_string == "spine-leaf" {
+				k, _ := strconv.Atoi(arg)
+				if k <= 1 {
+					return errors.New("the spine, leaf, host and host every leaf must be inteter and greater than 1")
 				}
 			} else if type_string == "tree" {
 				k, _ := strconv.Atoi(arg)
