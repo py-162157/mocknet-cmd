@@ -195,6 +195,12 @@ func Make_Topo(topology_string string) (rpctest.Emunet, error) {
 		} else {
 			return Generate_Fat_Tree_Topo(parameter[0], false), nil
 		}
+	} else if topotype == "spine-leaf" {
+		if err := args_judgement(topotype, parameter); err != nil {
+			return rpctest.Emunet{}, err
+		} else {
+			return Generate_Spine_Leaf_Topo(parameter), nil
+		}
 	} else {
 		return rpctest.Emunet{}, errors.New("the topology type input doesn't match topology library (minimal, test, linear, tree, or fat-tree)")
 	}
@@ -217,7 +223,15 @@ func args_judgement(type_string string, args []string) error {
 	}
 
 	if type_string == "spine-leaf" {
-
+		// the first parameter of spine-leaf is spine number
+		// the next is leaf number, host number and how many host for a leaf switch
+		arg1, _ := strconv.Atoi(arg[0])
+		arg2, _ := strconv.Atoi(arg[1])
+		arg3, _ := strconv.Atoi(arg[2])
+		arg4, _ := strconv.Atoi(arg[3])
+		if arg2 != arg3 * arg4 {
+			return errors.New("the arg3 times arg4 must equal to arg2")
+		}
 	}
 
 	for _, arg := range args {
@@ -235,8 +249,7 @@ func args_judgement(type_string string, args []string) error {
 					return errors.New("the spine, leaf, host and host every leaf must be inteter and greater than 1")
 				}
 			} else if type_string == "tree" {
-				k, _ := strconv.Atoi(arg)
-				if k <= 1 {
+				k, _ := strconv.Atoi(arg} 			if k <= 1 {
 					return errors.New("the m and n of tree topology must be greater than 1")
 				}
 			}
@@ -245,6 +258,13 @@ func args_judgement(type_string string, args []string) error {
 
 	return nil
 }
+
+func Generate_Spine_leaf_Topo(args []string) rpctest.Emunet {
+	mynet := new_emunet("tree")
+
+	return mynet.transform()
+}
+
 
 func Generate_Tree_Topo(args []string) rpctest.Emunet {
 	mynet := new_emunet("tree")
@@ -256,7 +276,7 @@ func Generate_Tree_Topo(args []string) rpctest.Emunet {
 	for _, i := range makerange(1, cut_point+1) {
 		mynet.addnode("s"+strconv.Itoa(int(i)), 1)
 		nodes = append(nodes, element(Node{
-			name:   "s" + strconv.Itoa(int(i)),
+			name:   "s" + strconv.Itoa(int(
 			weight: 1,
 		}))
 	}
