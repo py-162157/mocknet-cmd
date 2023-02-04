@@ -225,7 +225,6 @@ func args_judgement(type_string string, args []string) error {
 	if type_string == "spine-leaf" {
 		// the first parameter of spine-leaf is spine number
 		// the next is leaf number, host number and how many host for a leaf switch
-		arg1, _ := strconv.Atoi(args[0])
 		arg2, _ := strconv.Atoi(args[1])
 		arg3, _ := strconv.Atoi(args[2])
 		arg4, _ := strconv.Atoi(args[3])
