@@ -29,6 +29,7 @@ type Node struct {
 	weight uint
 }
 
+// -------------fat-tree-------------
 type FatTree struct {
 	cores []Node
 	pods  []Pod
@@ -43,6 +44,21 @@ type Ground struct {
 	access Node
 	hosts  []Node
 }
+
+// -------------fat-tree-------------
+
+// ------------spine-leaf------------
+type SpineLeaf struct {
+	spines []Node
+	leaves []Leaf
+}
+
+type Leaf struct {
+	leaf  Node
+	hosts []Node
+}
+
+// ------------spine-leaf------------
 
 type MyEmunet struct {
 	nodes      map[string]element
@@ -199,7 +215,7 @@ func Make_Topo(topology_string string) (rpctest.Emunet, error) {
 		if err := args_judgement(topotype, parameter); err != nil {
 			return rpctest.Emunet{}, err
 		} else {
-			return Generate_Spine_Leaf_Topo(parameter), nil
+			return Generate_Spine_Leaf_Topo(parameter, false), nil
 		}
 	} else {
 		return rpctest.Emunet{}, errors.New("the topology type input doesn't match topology library (minimal, test, linear, tree, or fat-tree)")
@@ -259,38 +275,64 @@ func args_judgement(type_string string, args []string) error {
 	return nil
 }
 
-func Generate_Spine_Leaf_Topo(args []string) rpctest.Emunet {
-	mynet := new_emunet("tree")
+func Generate_Spine_Leaf_Topo(args []string, random bool) rpctest.Emunet {
+	var spine_leaf SpineLeaf
+	mynet := new_emunet("spine-leaf")
+	spine_number, _ := strconv.Atoi(args[0])
+	leaf_number, _ := strconv.Atoi(args[1])
+	// host_number, _ := strconv.Atoi(args[2])
+	host_per_leaf, _ := strconv.Atoi(args[3])
 
-	return mynet.transform()
-}
-
-func Generate_Tree_Topo(args []string) rpctest.Emunet {
-	mynet := new_emunet("tree")
-	m, _ := strconv.Atoi(args[0])
-	n, _ := strconv.Atoi(args[1])
-	nodes := make([]element, 0)
-	cut_point := (1 - int(math.Pow(float64(n), float64(m)))) / (1 - n)      // 最后一个switch节点的序号，从1开始
-	total_number := (1 - int(math.Pow(float64(n), float64(m+1)))) / (1 - n) // 总节点数
-	for _, i := range makerange(1, cut_point+1) {
-		mynet.addnode("s"+strconv.Itoa(int(i)), 1)
-		nodes = append(nodes, element(Node{
-			name:   "s" + strconv.Itoa(int(i)),
-			weight: 1,
-		}))
-	}
-	for _, i := range makerange(cut_point+1, total_number+1) {
-		parent_index := (int(i) + n - 2) / n
-		mynet.addnode("h"+strconv.Itoa((int(i)+n-2)%n+1)+nodes[parent_index-1].name, 1)
-		nodes = append(nodes, element(Node{
-			name:   "h" + strconv.Itoa((int(i)+n-2)%n+1) + nodes[parent_index-1].name,
-			weight: 1,
-		}))
+	switch_count := 1
+	var i, j int
+	for i = 1; i <= spine_number; i++ {
+		node := Node{
+			name:   "s" + strconv.Itoa(switch_count),
+			weight: uint(leaf_number),
+		}
+		spine_leaf.spines = append(spine_leaf.spines, node)
+		mynet.addnode("s"+strconv.Itoa(switch_count), leaf_number)
+		switch_count++
 	}
 
-	for _, i := range makerange(2, total_number+1) {
-		mynet.addedge(nodes[(int(i)+n-2)/n-1].name, nodes[int(i)-1].name, 1)
-		mynet.addedge(nodes[int(i)-1].name, nodes[(int(i)+n-2)/n-1].name, 1)
+	for i = 1; i <= leaf_number; i++ {
+		var leaf Leaf
+		leaf.leaf = Node{
+			name:   "s" + strconv.Itoa(switch_count),
+			weight: uint(spine_number + host_per_leaf),
+		}
+		switch_count++
+		for j = 1; j <= host_per_leaf; j++ {
+			host_count := 1
+			leaf.hosts = append(leaf.hosts, Node{
+				name:   "h" + strconv.Itoa(host_count) + leaf.leaf.name,
+				weight: 1,
+			})
+			host_count++
+		}
+		spine_leaf.leaves = append(spine_leaf.leaves, leaf)
+	}
+
+	for _, spine := range spine_leaf.spines {
+		for _, leaf := range spine_leaf.leaves {
+			r := rand.Intn(5) + 1
+			weight := uint(1)
+			if random {
+				weight = uint(r)
+			}
+			mynet.addedge(spine.name, leaf.leaf.name, int(weight))
+		}
+	}
+
+	for _, leaf := range spine_leaf.leaves {
+		for _, host := range leaf.hosts {
+			r := rand.Intn(5) + 1
+			weight := uint(1)
+			if random {
+				weight = uint(r)
+			}
+			mynet.addedge(leaf.leaf.name, host.name, int(weight))
+		}
 	}
 
 	return mynet.transform()
@@ -384,6 +426,37 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 				mynet.addedge(ground.access.name, host.name, int(weight))
 			}
 		}
+	}
+
+	return mynet.transform()
+}
+
+func Generate_Tree_Topo(args []string) rpctest.Emunet {
+	mynet := new_emunet("tree")
+	m, _ := strconv.Atoi(args[0])
+	n, _ := strconv.Atoi(args[1])
+	nodes := make([]element, 0)
+	cut_point := (1 - int(math.Pow(float64(n), float64(m)))) / (1 - n)      // 最后一个switch节点的序号，从1开始
+	total_number := (1 - int(math.Pow(float64(n), float64(m+1)))) / (1 - n) // 总节点数
+	for _, i := range makerange(1, cut_point+1) {
+		mynet.addnode("s"+strconv.Itoa(int(i)), 1)
+		nodes = append(nodes, element(Node{
+			name:   "s" + strconv.Itoa(int(i)),
+			weight: 1,
+		}))
+	}
+	for _, i := range makerange(cut_point+1, total_number+1) {
+		parent_index := (int(i) + n - 2) / n
+		mynet.addnode("h"+strconv.Itoa((int(i)+n-2)%n+1)+nodes[parent_index-1].name, 1)
+		nodes = append(nodes, element(Node{
+			name:   "h" + strconv.Itoa((int(i)+n-2)%n+1) + nodes[parent_index-1].name,
+			weight: 1,
+		}))
+	}
+
+	for _, i := range makerange(2, total_number+1) {
+		mynet.addedge(nodes[(int(i)+n-2)/n-1].name, nodes[int(i)-1].name, 1)
+		mynet.addedge(nodes[int(i)-1].name, nodes[(int(i)+n-2)/n-1].name, 1)
 	}
 
 	return mynet.transform()
