@@ -43,7 +43,8 @@ func main() {
 				c.App.PrintError(err)
 			} else {
 				infos.topology = topo
-				if infos.remoteAaddress == "" {
+				// origin: if infos.remoteAaddress == "" {
+				if infos.remoteAaddress != "" {
 					c.App.Println("please first input the remote address!")
 				} else {
 					message := rpctest.Message{

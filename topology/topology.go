@@ -2,6 +2,7 @@ package topology
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
@@ -11,22 +12,23 @@ import (
 )
 
 const (
-	FILENAME = "/home/djp/mininet/bin/mytopo.py"
+	FILENAME          = "/home/djp/mininet/bin/mytopo.py"
+	GraphPartitioners = "/home/djp/GraphPartitioners/data.txt"
 )
 
 type element Node
 
 type Edge struct {
-	start  element
-	end    element
-	intf1  int
-	intf2  int
-	weight uint
+	Start  element
+	End    element
+	Intf1  int
+	Intf2  int
+	Weight uint
 }
 
 type Node struct {
-	name   string
-	weight uint
+	Name   string
+	Weight uint
 }
 
 // -------------fat-tree-------------
@@ -49,22 +51,22 @@ type Ground struct {
 
 // ------------spine-leaf------------
 type SpineLeaf struct {
-	spines []Node
-	leaves []Leaf
+	Spines []Node
+	Leaves []Leaf
 }
 
 type Leaf struct {
-	leaf  Node
-	hosts []Node
+	Leaf  Node
+	Hosts []Node
 }
 
 // ------------spine-leaf------------
 
 type MyEmunet struct {
-	nodes      map[string]element
-	edges      map[string]Edge
-	intf_index map[string]int
-	topo_type  string
+	Nodes      map[string]element
+	Edges      map[string]Edge
+	Intf_index map[string]int
+	Topo_type  string
 }
 
 func new_emunet(topo_type string) MyEmunet {
@@ -79,7 +81,7 @@ func (n *MyEmunet) addnode(name string, weight ...int) error {
 	if (len(weight) != 1) && (len(weight) != 0) {
 		return errors.New("weight bit must be 1 or no weight")
 	} else {
-		if _, ok := n.nodes[name]; ok {
+		if _, ok := n.Nodes[name]; ok {
 			return errors.New("node" + name + "exist")
 		}
 		w := 1
@@ -87,28 +89,31 @@ func (n *MyEmunet) addnode(name string, weight ...int) error {
 			w = weight[0]
 		}
 
-		n.nodes[name] = element(Node{
-			name:   name,
-			weight: uint(w),
+		n.Nodes[name] = element(Node{
+			Name:   name,
+			Weight: uint(w),
 		})
 
-		n.intf_index[name] = 0
+		n.Intf_index[name] = 0
 	}
 
 	return nil
 }
 
 func (n *MyEmunet) addedge(node1 string, node2 string, weight ...int) error {
-	_, ok1 := n.nodes[node1]
-	_, ok2 := n.nodes[node2]
+	_, ok1 := n.Nodes[node1]
+	_, ok2 := n.Nodes[node2]
 	if !(ok1 && ok2) {
+		fmt.Println(node1 + "and" + node2 + "are not both exist")
 		return errors.New(node1 + "and" + node2 + "are not both exist")
 	}
 
 	if (len(weight) != 1) && (len(weight) != 0) {
+		fmt.Println("weight bit must be 1 or no weight")
 		return errors.New("weight bit must be 1 or no weight")
 	} else {
-		if _, ok := n.nodes[node1+"-"+node2]; ok {
+		if _, ok := n.Nodes[node1+"-"+node2]; ok {
+			fmt.Println("edge" + node1 + "-" + node2 + "exist")
 			return errors.New("edge" + node1 + "-" + node2 + "exist")
 		}
 
@@ -117,19 +122,21 @@ func (n *MyEmunet) addedge(node1 string, node2 string, weight ...int) error {
 			w = weight[0]
 		}
 
-		n.edges[node1+"-"+node2] = Edge{
-			start: element(Node{
-				name:   node1,
-				weight: n.nodes[node1].weight,
+		n.Edges[node1+"-"+node2] = Edge{
+			Start: element(Node{
+				Name:   node1,
+				Weight: n.Nodes[node1].Weight,
 			}),
-			end: element(Node{
-				name:   node2,
-				weight: n.nodes[node2].weight,
+			End: element(Node{
+				Name:   node2,
+				Weight: n.Nodes[node2].Weight,
 			}),
-			intf1:  n.intf_index[node1],
-			intf2:  n.intf_index[node2],
-			weight: uint(w),
+			Intf1:  n.Intf_index[node1],
+			Intf2:  n.Intf_index[node2],
+			Weight: uint(w),
 		}
+
+		fmt.Println("add edge", node1+"-"+node2)
 
 		/*n.edges[node2+"-"+node1] = Edge{
 			start: element(Node{
@@ -145,8 +152,8 @@ func (n *MyEmunet) addedge(node1 string, node2 string, weight ...int) error {
 			weight: uint(w),
 		}*/
 
-		n.intf_index[node1]++
-		n.intf_index[node2]++
+		n.Intf_index[node1]++
+		n.Intf_index[node2]++
 	}
 
 	return nil
@@ -154,25 +161,25 @@ func (n *MyEmunet) addedge(node1 string, node2 string, weight ...int) error {
 
 func (net MyEmunet) transform() rpctest.Emunet {
 	emunet := rpctest.Emunet{}
-	for _, node := range net.nodes {
+	for _, node := range net.Nodes {
 		emunet.Pods = append(emunet.Pods, &rpctest.Pod{
-			Name: node.name,
+			Name: node.Name,
 		})
 	}
-	for _, edge := range net.edges {
+	for _, edge := range net.Edges {
 		emunet.Links = append(emunet.Links, &rpctest.Link{
-			Name: edge.start.name + "-" + edge.end.name,
+			Name: edge.Start.Name + "-" + edge.End.Name,
 			Node1: &rpctest.Pod{
-				Name: edge.start.name,
+				Name: edge.Start.Name,
 			},
 			Node2: &rpctest.Pod{
-				Name: edge.end.name,
+				Name: edge.End.Name,
 			},
-			Node1Inf: strconv.Itoa(edge.intf1),
-			Node2Inf: strconv.Itoa(edge.intf2),
+			Node1Inf: strconv.Itoa(edge.Intf1),
+			Node2Inf: strconv.Itoa(edge.Intf2),
 		})
 	}
-	emunet.Type = net.topo_type
+	emunet.Type = net.Topo_type
 	return emunet
 }
 
@@ -244,8 +251,8 @@ func args_judgement(type_string string, args []string) error {
 		arg2, _ := strconv.Atoi(args[1])
 		arg3, _ := strconv.Atoi(args[2])
 		arg4, _ := strconv.Atoi(args[3])
-		if arg2 != arg3*arg4 {
-			return errors.New("the arg3 times arg4 must equal to arg2")
+		if arg3 != arg2*arg4 {
+			return errors.New("the arg2 times arg4 must equal to arg3")
 		}
 	}
 
@@ -280,61 +287,65 @@ func Generate_Spine_Leaf_Topo(args []string, random bool) rpctest.Emunet {
 	mynet := new_emunet("spine-leaf")
 	spine_number, _ := strconv.Atoi(args[0])
 	leaf_number, _ := strconv.Atoi(args[1])
-	// host_number, _ := strconv.Atoi(args[2])
+	//host_number, _ := strconv.Atoi(args[2])
 	host_per_leaf, _ := strconv.Atoi(args[3])
 
 	switch_count := 1
 	var i, j int
 	for i = 1; i <= spine_number; i++ {
 		node := Node{
-			name:   "s" + strconv.Itoa(switch_count),
-			weight: uint(leaf_number),
+			Name:   "s" + strconv.Itoa(switch_count),
+			Weight: uint(leaf_number),
 		}
-		spine_leaf.spines = append(spine_leaf.spines, node)
+		spine_leaf.Spines = append(spine_leaf.Spines, node)
 		mynet.addnode("s"+strconv.Itoa(switch_count), leaf_number)
 		switch_count++
 	}
 
 	for i = 1; i <= leaf_number; i++ {
 		var leaf Leaf
-		leaf.leaf = Node{
-			name:   "s" + strconv.Itoa(switch_count),
-			weight: uint(spine_number + host_per_leaf),
+		leaf.Leaf = Node{
+			Name:   "s" + strconv.Itoa(switch_count),
+			Weight: uint(spine_number + host_per_leaf),
 		}
+		mynet.addnode("s"+strconv.Itoa(switch_count), spine_number+host_per_leaf)
 		switch_count++
+		host_count := 1
 		for j = 1; j <= host_per_leaf; j++ {
-			host_count := 1
-			leaf.hosts = append(leaf.hosts, Node{
-				name:   "h" + strconv.Itoa(host_count) + leaf.leaf.name,
-				weight: 1,
+			leaf.Hosts = append(leaf.Hosts, Node{
+				Name:   "h" + strconv.Itoa(host_count) + leaf.Leaf.Name,
+				Weight: 1,
 			})
+			mynet.addnode("h"+strconv.Itoa(host_count)+leaf.Leaf.Name, 1)
 			host_count++
 		}
-		spine_leaf.leaves = append(spine_leaf.leaves, leaf)
+		spine_leaf.Leaves = append(spine_leaf.Leaves, leaf)
 	}
 
-	for _, spine := range spine_leaf.spines {
-		for _, leaf := range spine_leaf.leaves {
+	for _, spine := range spine_leaf.Spines {
+		for _, leaf := range spine_leaf.Leaves {
+			//fmt.Println(spine.Name + "-" + leaf.Leaf.Name)
 			r := rand.Intn(5) + 1
 			weight := uint(1)
 			if random {
 				weight = uint(r)
 			}
-			mynet.addedge(spine.name, leaf.leaf.name, int(weight))
+			mynet.addedge(spine.Name, leaf.Leaf.Name, int(weight))
 		}
 	}
 
-	for _, leaf := range spine_leaf.leaves {
-		for _, host := range leaf.hosts {
+	for _, leaf := range spine_leaf.Leaves {
+		for _, host := range leaf.Hosts {
 			r := rand.Intn(5) + 1
 			weight := uint(1)
 			if random {
 				weight = uint(r)
 			}
-			mynet.addedge(leaf.leaf.name, host.name, int(weight))
+			mynet.addedge(leaf.Leaf.Name, host.Name, int(weight))
 		}
 	}
 
+	//fmt.Println(mynet)
 	return mynet.transform()
 }
 
@@ -347,8 +358,8 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 	var i int
 	for i = 1; i <= n*n/4; i++ {
 		node := Node{
-			name:   "s" + strconv.Itoa(switch_count),
-			weight: uint(n),
+			Name:   "s" + strconv.Itoa(switch_count),
+			Weight: uint(n),
 		}
 		fat_tree.cores = append(fat_tree.cores, node)
 		mynet.addnode("s"+strconv.Itoa(switch_count), n)
@@ -358,8 +369,8 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 		var pod Pod
 		for range makerange(1, n/2+1) {
 			node := Node{
-				name:   "s" + strconv.Itoa(switch_count),
-				weight: uint(n),
+				Name:   "s" + strconv.Itoa(switch_count),
+				Weight: uint(n),
 			}
 			pod.aggregations = append(pod.aggregations, node)
 			mynet.addnode("s"+strconv.Itoa(switch_count), n)
@@ -367,8 +378,8 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 
 			var ground Ground
 			node = Node{
-				name:   "s" + strconv.Itoa(switch_count),
-				weight: uint(n),
+				Name:   "s" + strconv.Itoa(switch_count),
+				Weight: uint(n),
 			}
 			ground.access = node
 			mynet.addnode("s"+strconv.Itoa(switch_count), n)
@@ -377,11 +388,11 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 			host_count := 1
 			for range makerange(1, n/2+1) {
 				node = Node{
-					name:   "h" + strconv.Itoa(host_count) + ground.access.name,
-					weight: 1,
+					Name:   "h" + strconv.Itoa(host_count) + ground.access.Name,
+					Weight: 1,
 				}
 				ground.hosts = append(ground.hosts, node)
-				mynet.addnode("h"+strconv.Itoa(host_count)+ground.access.name, 1)
+				mynet.addnode("h"+strconv.Itoa(host_count)+ground.access.Name, 1)
 				host_count++
 
 			}
@@ -398,7 +409,7 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 			if random {
 				weight = uint(r)
 			}
-			mynet.addedge(core.name, pod.aggregations[aggregation_count].name, int(weight))
+			mynet.addedge(core.Name, pod.aggregations[aggregation_count].Name, int(weight))
 		}
 	}
 
@@ -410,7 +421,7 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 				if random {
 					weight = uint(r)
 				}
-				mynet.addedge(aggregation.name, ground.access.name, int(weight))
+				mynet.addedge(aggregation.Name, ground.access.Name, int(weight))
 			}
 		}
 	}
@@ -423,7 +434,7 @@ func Generate_Fat_Tree_Topo(arg string, random bool) rpctest.Emunet {
 				if random {
 					weight = uint(r)
 				}
-				mynet.addedge(ground.access.name, host.name, int(weight))
+				mynet.addedge(ground.access.Name, host.Name, int(weight))
 			}
 		}
 	}
@@ -441,22 +452,22 @@ func Generate_Tree_Topo(args []string) rpctest.Emunet {
 	for _, i := range makerange(1, cut_point+1) {
 		mynet.addnode("s"+strconv.Itoa(int(i)), 1)
 		nodes = append(nodes, element(Node{
-			name:   "s" + strconv.Itoa(int(i)),
-			weight: 1,
+			Name:   "s" + strconv.Itoa(int(i)),
+			Weight: 1,
 		}))
 	}
 	for _, i := range makerange(cut_point+1, total_number+1) {
 		parent_index := (int(i) + n - 2) / n
-		mynet.addnode("h"+strconv.Itoa((int(i)+n-2)%n+1)+nodes[parent_index-1].name, 1)
+		mynet.addnode("h"+strconv.Itoa((int(i)+n-2)%n+1)+nodes[parent_index-1].Name, 1)
 		nodes = append(nodes, element(Node{
-			name:   "h" + strconv.Itoa((int(i)+n-2)%n+1) + nodes[parent_index-1].name,
-			weight: 1,
+			Name:   "h" + strconv.Itoa((int(i)+n-2)%n+1) + nodes[parent_index-1].Name,
+			Weight: 1,
 		}))
 	}
 
 	for _, i := range makerange(2, total_number+1) {
-		mynet.addedge(nodes[(int(i)+n-2)/n-1].name, nodes[int(i)-1].name, 1)
-		mynet.addedge(nodes[int(i)-1].name, nodes[(int(i)+n-2)/n-1].name, 1)
+		mynet.addedge(nodes[(int(i)+n-2)/n-1].Name, nodes[int(i)-1].Name, 1)
+		mynet.addedge(nodes[int(i)-1].Name, nodes[(int(i)+n-2)/n-1].Name, 1)
 	}
 
 	return mynet.transform()
